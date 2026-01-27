@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using BlockPuzzle.Grid;
 using BlockPuzzle.Pieces;
+using BlockPuzzle.UI;
 
 namespace BlockPuzzle.Core
 {
