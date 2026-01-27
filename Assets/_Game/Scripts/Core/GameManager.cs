@@ -44,7 +44,15 @@ namespace BlockPuzzle.Core
                 return;
             }
             Instance = this;
-            DontDestroyOnLoad(gameObject);
+            // Note: DontDestroyOnLoad is handled by Bootstrap
+        }
+
+        /// <summary>
+        /// Called by Bootstrap to set the config.
+        /// </summary>
+        public void SetConfig(GameConfig config)
+        {
+            _gameConfig = config;
         }
 
         public void SetState(GameState newState)
