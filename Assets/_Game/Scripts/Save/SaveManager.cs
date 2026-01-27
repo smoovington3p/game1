@@ -99,8 +99,12 @@ namespace BlockPuzzle.Save
                     File.Copy(_savePath, _backupPath, true);
                 }
 
-                // Move temp to main
-                File.Move(_tempPath, _savePath, true);
+                // Move temp to main (Unity 2022 doesn't support 3-arg overwrite)
+                if (File.Exists(_savePath))
+                {
+                    File.Delete(_savePath);
+                }
+                File.Move(_tempPath, _savePath);
 
                 OnSaveCompleted?.Invoke();
             }
