@@ -2,7 +2,8 @@
     "name": "BlockPuzzle.Editor",
     "rootNamespace": "BlockPuzzle.Editor",
     "references": [
-        "BlockPuzzle"
+        "BlockPuzzle",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [
         "Editor"
