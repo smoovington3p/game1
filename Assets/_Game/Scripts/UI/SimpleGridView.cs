@@ -182,11 +182,17 @@ namespace BlockPuzzle.UI
         [SerializeField] private float _cellSize = 24f;
 
         private int _pieceIndex;
+        private PieceData _currentPiece;
         private List<GameObject> _cells = new List<GameObject>();
+
+        public RectTransform Container => _container;
+        public int PieceIndex => _pieceIndex;
+        public PieceData CurrentPiece => _currentPiece;
 
         public void SetPiece(PieceData piece, int index)
         {
             _pieceIndex = index;
+            _currentPiece = piece;
             ClearCells();
 
             if (piece == null || _container == null || _cellPrefab == null) return;
@@ -202,12 +208,27 @@ namespace BlockPuzzle.UI
                 rect.sizeDelta = new Vector2(_cellSize - 2, _cellSize - 2);
                 _cells.Add(cell);
             }
+
+            // Update DraggablePiece if present
+            var draggable = GetComponent<DraggablePiece>();
+            if (draggable != null)
+            {
+                draggable.SetPieceData(piece, index);
+            }
         }
 
         public void ClearPiece()
         {
             ClearCells();
             _pieceIndex = -1;
+            _currentPiece = null;
+
+            // Update DraggablePiece if present
+            var draggable = GetComponent<DraggablePiece>();
+            if (draggable != null)
+            {
+                draggable.SetPieceData(null, -1);
+            }
         }
 
         private void ClearCells()

@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using TMPro;
@@ -27,16 +28,19 @@ namespace BlockPuzzle.Editor
             // 1. Ensure Camera exists
             SetupGameCamera.EnsureGameCamera();
 
-            // 2. Create GameController
+            // 2. Ensure EventSystem exists for UI input
+            EnsureEventSystem();
+
+            // 3. Create GameController
             var gameController = CreateGameController();
 
-            // 3. Create Grid Visual
+            // 4. Create Grid Visual
             var gridView = CreateGridView(gameController);
 
-            // 4. Create UI Canvas
+            // 5. Create UI Canvas
             CreateUICanvas(gameController);
 
-            // 5. Wire up references
+            // 6. Wire up references
             WireReferences(gameController, gridView);
 
             // Save scene
@@ -44,10 +48,31 @@ namespace BlockPuzzle.Editor
             EditorSceneManager.SaveScene(scene);
 
             Debug.Log("[BuildGameScene] Game scene built successfully!");
+            Debug.Log("  - EventSystem for UI input");
             Debug.Log("  - GameController with SimpleGameController");
             Debug.Log("  - GridContainer with SimpleGridView");
             Debug.Log("  - UI Canvas with Score, Back, New Game buttons");
             Debug.Log("  - Cell prefab for grid rendering");
+        }
+
+        private static void EnsureEventSystem()
+        {
+            // Find existing EventSystem
+            var existing = Object.FindObjectOfType<EventSystem>();
+            if (existing != null)
+            {
+                Debug.Log("[BuildGameScene] EventSystem already exists");
+                return;
+            }
+
+            // Create EventSystem
+            var eventSystemGO = new GameObject("EventSystem");
+            eventSystemGO.AddComponent<EventSystem>();
+
+            // Add StandaloneInputModule (works with both old and new input system in compatibility mode)
+            eventSystemGO.AddComponent<StandaloneInputModule>();
+
+            Debug.Log("[BuildGameScene] Created EventSystem with StandaloneInputModule");
         }
 
         private static SimpleGameController CreateGameController()
@@ -147,6 +172,7 @@ namespace BlockPuzzle.Editor
 
             var image = cell.AddComponent<Image>();
             image.color = new Color(0.25f, 0.25f, 0.25f);
+            image.raycastTarget = true; // Enable for click detection
 
             // Save as prefab
             EnsureDirectoryExists("Assets/_Game/Prefabs");
@@ -237,7 +263,15 @@ namespace BlockPuzzle.Editor
             so.FindProperty("_cellPrefab").objectReferenceValue = miniCellPrefab;
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            // Add button for click detection
+            // Add DraggablePiece for drag-and-drop support
+            var draggable = slot.AddComponent<DraggablePiece>();
+            var draggableSO = new SerializedObject(draggable);
+            draggableSO.FindProperty("_pieceContainer").objectReferenceValue = containerRect;
+            draggableSO.FindProperty("_dragScale").floatValue = 1.5f;
+            draggableSO.FindProperty("_dragOffsetY").floatValue = 100f;
+            draggableSO.ApplyModifiedPropertiesWithoutUndo();
+
+            // Add button for click detection (backup for non-drag clicks)
             var button = slot.AddComponent<Button>();
             button.onClick.AddListener(() => slotComponent.OnClick());
 
@@ -262,6 +296,7 @@ namespace BlockPuzzle.Editor
 
             var image = cell.AddComponent<Image>();
             image.color = new Color(0.3f, 0.5f, 0.9f);
+            image.raycastTarget = false; // Disable so clicks pass through to slot
 
             EnsureDirectoryExists("Assets/_Game/Prefabs");
             var prefab = PrefabUtility.SaveAsPrefabAsset(cell, prefabPath);
