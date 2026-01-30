@@ -17,8 +17,8 @@ namespace BlockPuzzle.UI
         [Header("Grid Settings")]
         [SerializeField] private RectTransform _gridContainer;
         [SerializeField] private GameObject _cellPrefab;
-        [SerializeField] private float _cellSize = 40f;
-        [SerializeField] private float _cellSpacing = 2f;
+        [SerializeField] private float _cellSize = 80f;
+        [SerializeField] private float _cellSpacing = 4f;
 
         [Header("Piece Tray")]
         [SerializeField] private RectTransform _pieceTrayContainer;
@@ -68,7 +68,12 @@ namespace BlockPuzzle.UI
                     var cellObj = Instantiate(_cellPrefab, _gridContainer);
                     var rectTransform = cellObj.GetComponent<RectTransform>();
 
-                    // Position from bottom-left
+                    // Set anchors to center for proper positioning
+                    rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+                    rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                    rectTransform.pivot = new Vector2(0.5f, 0.5f);
+
+                    // Position from center of grid container
                     float posX = x * (_cellSize + _cellSpacing) - totalWidth / 2f + _cellSize / 2f;
                     float posY = y * (_cellSize + _cellSpacing) - totalHeight / 2f + _cellSize / 2f;
                     rectTransform.anchoredPosition = new Vector2(posX, posY);
@@ -174,7 +179,7 @@ namespace BlockPuzzle.UI
         [SerializeField] private RectTransform _container;
         [SerializeField] private GameObject _cellPrefab;
         [SerializeField] private Image _selectionFrame;
-        [SerializeField] private float _cellSize = 20f;
+        [SerializeField] private float _cellSize = 24f;
 
         private int _pieceIndex;
         private List<GameObject> _cells = new List<GameObject>();
@@ -190,6 +195,9 @@ namespace BlockPuzzle.UI
             {
                 var cell = Instantiate(_cellPrefab, _container);
                 var rect = cell.GetComponent<RectTransform>();
+                rect.anchorMin = new Vector2(0.5f, 0.5f);
+                rect.anchorMax = new Vector2(0.5f, 0.5f);
+                rect.pivot = new Vector2(0.5f, 0.5f);
                 rect.anchoredPosition = new Vector2(offset.x * _cellSize, offset.y * _cellSize);
                 rect.sizeDelta = new Vector2(_cellSize - 2, _cellSize - 2);
                 _cells.Add(cell);

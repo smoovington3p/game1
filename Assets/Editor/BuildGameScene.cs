@@ -85,14 +85,16 @@ namespace BlockPuzzle.Editor
             gridCanvas.GetComponent<CanvasScaler>().referenceResolution = new Vector2(1080, 1920);
             gridCanvas.AddComponent<GraphicRaycaster>();
 
-            // Grid container
+            // Grid container - sized for 9x9 grid with 80px cells + 4px spacing
+            // Total: 9 * (80 + 4) - 4 = 752px
             var gridContainer = new GameObject("GridContainer");
             gridContainer.transform.SetParent(gridCanvas.transform, false);
             var gridRect = gridContainer.AddComponent<RectTransform>();
             gridRect.anchorMin = new Vector2(0.5f, 0.5f);
             gridRect.anchorMax = new Vector2(0.5f, 0.5f);
-            gridRect.anchoredPosition = new Vector2(0, 100);
-            gridRect.sizeDelta = new Vector2(400, 400);
+            gridRect.pivot = new Vector2(0.5f, 0.5f);
+            gridRect.anchoredPosition = new Vector2(0, 150);
+            gridRect.sizeDelta = new Vector2(760, 760);
 
             // Add SimpleGridView
             var gridView = gridContainer.AddComponent<SimpleGridView>();
@@ -107,8 +109,8 @@ namespace BlockPuzzle.Editor
             var so = new SerializedObject(gridView);
             so.FindProperty("_gridContainer").objectReferenceValue = gridRect;
             so.FindProperty("_cellPrefab").objectReferenceValue = cellPrefab;
-            so.FindProperty("_cellSize").floatValue = 40f;
-            so.FindProperty("_cellSpacing").floatValue = 2f;
+            so.FindProperty("_cellSize").floatValue = 80f;
+            so.FindProperty("_cellSpacing").floatValue = 4f;
             so.FindProperty("_gameController").objectReferenceValue = gameController;
             so.FindProperty("_pieceSlots").arraySize = 3;
 
@@ -138,10 +140,13 @@ namespace BlockPuzzle.Editor
             // Create cell prefab
             var cell = new GameObject("GridCell");
             var cellRect = cell.AddComponent<RectTransform>();
-            cellRect.sizeDelta = new Vector2(40, 40);
+            cellRect.anchorMin = new Vector2(0.5f, 0.5f);
+            cellRect.anchorMax = new Vector2(0.5f, 0.5f);
+            cellRect.pivot = new Vector2(0.5f, 0.5f);
+            cellRect.sizeDelta = new Vector2(80, 80);
 
             var image = cell.AddComponent<Image>();
-            image.color = new Color(0.3f, 0.3f, 0.3f);
+            image.color = new Color(0.25f, 0.25f, 0.25f);
 
             // Save as prefab
             EnsureDirectoryExists("Assets/_Game/Prefabs");
@@ -159,8 +164,9 @@ namespace BlockPuzzle.Editor
             var trayRect = tray.AddComponent<RectTransform>();
             trayRect.anchorMin = new Vector2(0.5f, 0f);
             trayRect.anchorMax = new Vector2(0.5f, 0f);
-            trayRect.anchoredPosition = new Vector2(0, 150);
-            trayRect.sizeDelta = new Vector2(400, 120);
+            trayRect.pivot = new Vector2(0.5f, 0.5f);
+            trayRect.anchoredPosition = new Vector2(0, 200);
+            trayRect.sizeDelta = new Vector2(700, 160);
 
             var layout = tray.AddComponent<HorizontalLayoutGroup>();
             layout.spacing = 20;
@@ -185,7 +191,7 @@ namespace BlockPuzzle.Editor
             var slot = new GameObject($"PieceSlot_{index}");
             slot.transform.SetParent(parent, false);
             var slotRect = slot.AddComponent<RectTransform>();
-            slotRect.sizeDelta = new Vector2(100, 100);
+            slotRect.sizeDelta = new Vector2(140, 140);
 
             // Background
             var bg = slot.AddComponent<Image>();
@@ -214,7 +220,8 @@ namespace BlockPuzzle.Editor
             var containerRect = container.AddComponent<RectTransform>();
             containerRect.anchorMin = new Vector2(0.5f, 0.5f);
             containerRect.anchorMax = new Vector2(0.5f, 0.5f);
-            containerRect.sizeDelta = new Vector2(80, 80);
+            containerRect.pivot = new Vector2(0.5f, 0.5f);
+            containerRect.sizeDelta = new Vector2(120, 120);
 
             // Add PieceTraySlot component
             var slotComponent = slot.AddComponent<PieceTraySlot>();
@@ -223,7 +230,7 @@ namespace BlockPuzzle.Editor
             var so = new SerializedObject(slotComponent);
             so.FindProperty("_container").objectReferenceValue = containerRect;
             so.FindProperty("_selectionFrame").objectReferenceValue = frameImage;
-            so.FindProperty("_cellSize").floatValue = 15f;
+            so.FindProperty("_cellSize").floatValue = 24f;
 
             // Create mini cell prefab for piece display
             var miniCellPrefab = CreateMiniCellPrefab();
@@ -248,7 +255,10 @@ namespace BlockPuzzle.Editor
 
             var cell = new GameObject("MiniCell");
             var cellRect = cell.AddComponent<RectTransform>();
-            cellRect.sizeDelta = new Vector2(15, 15);
+            cellRect.anchorMin = new Vector2(0.5f, 0.5f);
+            cellRect.anchorMax = new Vector2(0.5f, 0.5f);
+            cellRect.pivot = new Vector2(0.5f, 0.5f);
+            cellRect.sizeDelta = new Vector2(24, 24);
 
             var image = cell.AddComponent<Image>();
             image.color = new Color(0.3f, 0.5f, 0.9f);
