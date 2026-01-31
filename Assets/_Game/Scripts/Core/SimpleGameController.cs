@@ -25,14 +25,45 @@ namespace BlockPuzzle.Core
         public List<PieceData> CurrentPieces => _currentPieces;
         public bool IsGameActive => _isGameActive;
 
+        private void Awake()
+        {
+            // Ensure GameManager exists (fallback for direct scene launch)
+            EnsureGameManager();
+        }
+
         private void Start()
         {
             StartNewGame();
         }
 
+        private void EnsureGameManager()
+        {
+            if (GameManager.Instance != null) return;
+
+            Debug.Log("[SimpleGameController] GameManager not found, creating fallback");
+
+            // Create a temporary GameManager
+            var go = new GameObject("GameManager (Fallback)");
+            var gm = go.AddComponent<GameManager>();
+
+            // Try to load config from Resources
+            var config = Resources.Load<GameConfig>("GameConfig_Default");
+            if (config == null)
+            {
+                Debug.LogWarning("[SimpleGameController] No GameConfig found, using defaults");
+                config = ScriptableObject.CreateInstance<GameConfig>();
+            }
+            gm.SetConfig(config);
+
+            DontDestroyOnLoad(go);
+        }
+
         public void StartNewGame()
         {
             Debug.Log("[SimpleGameController] Starting new game");
+
+            // Ensure GameManager exists
+            EnsureGameManager();
 
             // Initialize grid
             var config = GameManager.Instance?.Config;

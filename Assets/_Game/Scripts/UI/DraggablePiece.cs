@@ -27,46 +27,73 @@ namespace BlockPuzzle.UI
 
         private Vector3 _originalPosition;
         private Vector3 _originalScale;
+        private Transform _originalParent;
         private bool _isDragging;
 
         private void Awake()
         {
             _slot = GetComponent<PieceTraySlot>();
+        }
+
+        private void Start()
+        {
+            // Find references
             _canvas = GetComponentInParent<Canvas>();
             if (_canvas != null)
             {
                 _canvasRect = _canvas.GetComponent<RectTransform>();
             }
-        }
 
-        private void Start()
-        {
             _gridView = FindObjectOfType<SimpleGridView>();
-            _gameController = FindObjectOfType<SimpleGameController>();
+            if (_gridView != null)
+            {
+                _gameController = _gridView.GameController;
+            }
+            if (_gameController == null)
+            {
+                _gameController = FindObjectOfType<SimpleGameController>();
+            }
+
+            Debug.Log($"[DraggablePiece] Start - GridView: {_gridView != null}, GameController: {_gameController != null}, Canvas: {_canvas != null}");
         }
 
         public void SetPieceData(PieceData piece, int index)
         {
             _pieceData = piece;
             _pieceIndex = index;
+            Debug.Log($"[DraggablePiece] SetPieceData index={index}, piece={(piece != null ? piece.Name : "null")}");
         }
 
         public void OnPointerClick(PointerEventData eventData)
         {
             // Only handle click if not dragging
-            if (!_isDragging && _slot != null)
+            if (!_isDragging && _slot != null && _pieceData != null)
             {
+                Debug.Log($"[DraggablePiece] Click on piece {_pieceIndex}");
                 _slot.OnClick();
             }
         }
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (_pieceData == null || _pieceContainer == null) return;
+            if (_pieceData == null)
+            {
+                Debug.Log("[DraggablePiece] BeginDrag - No piece data, ignoring");
+                return;
+            }
+            if (_pieceContainer == null)
+            {
+                Debug.LogWarning("[DraggablePiece] BeginDrag - No piece container!");
+                return;
+            }
 
             _isDragging = true;
             _originalPosition = _pieceContainer.localPosition;
             _originalScale = _pieceContainer.localScale;
+            _originalParent = _pieceContainer.parent;
+
+            // Move to canvas root so it renders on top
+            _pieceContainer.SetParent(_canvasRect, true);
 
             // Scale up for better visibility while dragging
             _pieceContainer.localScale = _originalScale * _dragScale;
@@ -77,7 +104,7 @@ namespace BlockPuzzle.UI
                 _gridView.SelectPiece(_pieceIndex);
             }
 
-            Debug.Log($"[DraggablePiece] Begin drag piece {_pieceIndex}");
+            Debug.Log($"[DraggablePiece] BeginDrag piece {_pieceIndex} ({_pieceData.Name})");
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -91,17 +118,7 @@ namespace BlockPuzzle.UI
             {
                 // Offset above finger for visibility
                 localPoint.y += _dragOffsetY;
-
-                // Convert to container's parent space
-                var parentRect = _pieceContainer.parent as RectTransform;
-                if (parentRect != null)
-                {
-                    Vector2 parentLocalPoint;
-                    RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                        parentRect, eventData.position, eventData.pressEventCamera, out parentLocalPoint);
-                    parentLocalPoint.y += _dragOffsetY;
-                    _pieceContainer.localPosition = parentLocalPoint;
-                }
+                _pieceContainer.anchoredPosition = localPoint;
             }
         }
 
@@ -117,38 +134,73 @@ namespace BlockPuzzle.UI
             // Try to place piece at drop location
             bool placed = TryPlaceAtPosition(eventData.position);
 
+            // Return to original parent
+            _pieceContainer.SetParent(_originalParent, true);
+
             if (!placed)
             {
                 // Return to original position
                 _pieceContainer.localPosition = _originalPosition;
+                Debug.Log($"[DraggablePiece] EndDrag piece {_pieceIndex} - NOT placed, returning to slot");
             }
-
-            Debug.Log($"[DraggablePiece] End drag piece {_pieceIndex}, placed: {placed}");
+            else
+            {
+                Debug.Log($"[DraggablePiece] EndDrag piece {_pieceIndex} - PLACED successfully");
+            }
         }
 
         private bool TryPlaceAtPosition(Vector2 screenPosition)
         {
-            if (_gameController == null || _pieceData == null || _pieceIndex < 0) return false;
-
-            // Find grid container
-            var gridContainer = _gridView?.GetComponent<RectTransform>();
-            if (gridContainer == null) return false;
-
-            // Convert screen position to grid position
-            Vector2 localPoint;
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                gridContainer, screenPosition, null, out localPoint))
+            if (_gameController == null)
             {
+                Debug.LogWarning("[DraggablePiece] TryPlace - No GameController!");
+                return false;
+            }
+            if (_pieceData == null)
+            {
+                Debug.LogWarning("[DraggablePiece] TryPlace - No piece data!");
+                return false;
+            }
+            if (_pieceIndex < 0)
+            {
+                Debug.LogWarning("[DraggablePiece] TryPlace - Invalid piece index!");
+                return false;
+            }
+            if (_gridView == null)
+            {
+                Debug.LogWarning("[DraggablePiece] TryPlace - No GridView!");
+                return false;
+            }
+
+            // Get grid container from GridView
+            var gridContainer = _gridView.GridContainer;
+            if (gridContainer == null)
+            {
+                Debug.LogWarning("[DraggablePiece] TryPlace - No grid container!");
+                return false;
+            }
+
+            // Convert screen position to grid container local position
+            Vector2 localPoint;
+            Camera cam = _canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvas.worldCamera;
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                gridContainer, screenPosition, cam, out localPoint))
+            {
+                Debug.Log("[DraggablePiece] TryPlace - Screen point not in grid container");
                 return false;
             }
 
             // Get grid dimensions from game controller
             var grid = _gameController.Grid;
-            if (grid == null) return false;
+            if (grid == null)
+            {
+                Debug.LogWarning("[DraggablePiece] TryPlace - Grid is null!");
+                return false;
+            }
 
-            // Calculate cell size (matching SimpleGridView values)
-            float cellSize = 80f;
-            float cellSpacing = 4f;
+            // Use actual values from GridView
+            float cellSize = _gridView.CellSize;
+            float cellSpacing = _gridView.CellSpacing;
             float totalWidth = grid.Width * (cellSize + cellSpacing) - cellSpacing;
             float totalHeight = grid.Height * (cellSize + cellSpacing) - cellSpacing;
 
@@ -159,14 +211,30 @@ namespace BlockPuzzle.UI
             int cellX = Mathf.FloorToInt(gridX);
             int cellY = Mathf.FloorToInt(gridY);
 
+            Debug.Log($"[DraggablePiece] TryPlace - localPoint: {localPoint}, gridCoords: ({cellX}, {cellY})");
+
             // Check bounds
             if (cellX < 0 || cellX >= grid.Width || cellY < 0 || cellY >= grid.Height)
             {
+                Debug.Log($"[DraggablePiece] TryPlace - Out of bounds: ({cellX}, {cellY})");
                 return false;
             }
 
             // Try to place
-            return _gameController.TryPlacePiece(_pieceIndex, new Vector2Int(cellX, cellY));
+            int scoreBefore = GameManager.Instance?.Score ?? 0;
+            bool result = _gameController.TryPlacePiece(_pieceIndex, new Vector2Int(cellX, cellY));
+            int scoreAfter = GameManager.Instance?.Score ?? 0;
+
+            if (result)
+            {
+                Debug.Log($"[DraggablePiece] Placement SUCCESS at ({cellX}, {cellY}), score: {scoreBefore} -> {scoreAfter} (+{scoreAfter - scoreBefore})");
+            }
+            else
+            {
+                Debug.Log($"[DraggablePiece] Placement FAILED at ({cellX}, {cellY}) - invalid position");
+            }
+
+            return result;
         }
     }
 }

@@ -36,21 +36,43 @@ namespace BlockPuzzle.UI
         private Image[,] _cellImages;
         private int _selectedPieceIndex = -1;
 
+        // Public accessors for DraggablePiece
+        public float CellSize => _cellSize;
+        public float CellSpacing => _cellSpacing;
+        public RectTransform GridContainer => _gridContainer;
+        public SimpleGameController GameController => _gameController;
+
         public void Initialize(GridData grid)
         {
             _grid = grid;
+            Debug.Log($"[SimpleGridView] Initialize called with grid {grid.Width}x{grid.Height}");
             CreateGridVisuals();
             RefreshGrid();
         }
 
         private void CreateGridVisuals()
         {
-            if (_gridContainer == null || _cellPrefab == null || _grid == null) return;
+            if (_gridContainer == null)
+            {
+                Debug.LogError("[SimpleGridView] _gridContainer is null!");
+                return;
+            }
+            if (_cellPrefab == null)
+            {
+                Debug.LogError("[SimpleGridView] _cellPrefab is null!");
+                return;
+            }
+            if (_grid == null)
+            {
+                Debug.LogError("[SimpleGridView] _grid is null!");
+                return;
+            }
 
             // Clear existing cells
-            foreach (Transform child in _gridContainer)
+            int childCount = _gridContainer.childCount;
+            for (int i = childCount - 1; i >= 0; i--)
             {
-                Destroy(child.gameObject);
+                DestroyImmediate(_gridContainer.GetChild(i).gameObject);
             }
 
             _cellImages = new Image[_grid.Width, _grid.Height];
@@ -58,14 +80,16 @@ namespace BlockPuzzle.UI
             float totalWidth = _grid.Width * (_cellSize + _cellSpacing) - _cellSpacing;
             float totalHeight = _grid.Height * (_cellSize + _cellSpacing) - _cellSpacing;
 
-            // Center the grid
+            // Update container size
             _gridContainer.sizeDelta = new Vector2(totalWidth, totalHeight);
 
+            int cellCount = 0;
             for (int y = 0; y < _grid.Height; y++)
             {
                 for (int x = 0; x < _grid.Width; x++)
                 {
                     var cellObj = Instantiate(_cellPrefab, _gridContainer);
+                    cellObj.name = $"Cell_{x}_{y}";
                     var rectTransform = cellObj.GetComponent<RectTransform>();
 
                     // Set anchors to center for proper positioning
@@ -88,8 +112,12 @@ namespace BlockPuzzle.UI
                     var button = cellObj.GetComponent<Button>();
                     if (button == null) button = cellObj.AddComponent<Button>();
                     button.onClick.AddListener(() => OnCellClicked(capturedX, capturedY));
+
+                    cellCount++;
                 }
             }
+
+            Debug.Log($"[SimpleGridView] Created {cellCount} grid cells ({_grid.Width}x{_grid.Height}), container size: {totalWidth}x{totalHeight}");
         }
 
         public void RefreshGrid()
@@ -110,20 +138,34 @@ namespace BlockPuzzle.UI
 
         public void UpdatePieceTray(List<PieceData> pieces)
         {
-            if (_pieceSlots == null) return;
+            if (_pieceSlots == null)
+            {
+                Debug.LogWarning("[SimpleGridView] UpdatePieceTray - _pieceSlots is null!");
+                return;
+            }
 
+            int activePieces = 0;
             for (int i = 0; i < _pieceSlots.Length; i++)
             {
+                if (_pieceSlots[i] == null)
+                {
+                    Debug.LogWarning($"[SimpleGridView] PieceSlot {i} is null!");
+                    continue;
+                }
+
                 if (i < pieces.Count && pieces[i] != null)
                 {
                     _pieceSlots[i].SetPiece(pieces[i], i);
                     _pieceSlots[i].SetSelected(i == _selectedPieceIndex);
+                    activePieces++;
                 }
                 else
                 {
                     _pieceSlots[i].ClearPiece();
                 }
             }
+
+            Debug.Log($"[SimpleGridView] UpdatePieceTray - {activePieces} active pieces in {_pieceSlots.Length} slots");
         }
 
         public void SelectPiece(int index)
@@ -195,7 +237,18 @@ namespace BlockPuzzle.UI
             _currentPiece = piece;
             ClearCells();
 
-            if (piece == null || _container == null || _cellPrefab == null) return;
+            // Reset container position (in case it was moved during drag)
+            if (_container != null)
+            {
+                _container.anchoredPosition = Vector2.zero;
+                _container.localScale = Vector3.one;
+            }
+
+            if (piece == null || _container == null || _cellPrefab == null)
+            {
+                Debug.Log($"[PieceTraySlot] SetPiece index={index} - piece is null or missing refs");
+                return;
+            }
 
             foreach (var offset in piece.Offsets)
             {
@@ -208,6 +261,8 @@ namespace BlockPuzzle.UI
                 rect.sizeDelta = new Vector2(_cellSize - 2, _cellSize - 2);
                 _cells.Add(cell);
             }
+
+            Debug.Log($"[PieceTraySlot] SetPiece index={index}, piece={piece.Name}, tiles={piece.TileCount}");
 
             // Update DraggablePiece if present
             var draggable = GetComponent<DraggablePiece>();
