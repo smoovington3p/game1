@@ -139,16 +139,44 @@ namespace BlockPuzzle.Editor
             so.FindProperty("_gameController").objectReferenceValue = gameController;
             so.FindProperty("_pieceSlots").arraySize = 3;
 
-            // Wire piece slots
-            var slots = pieceTray.GetComponentsInChildren<PieceTraySlot>();
-            for (int i = 0; i < Mathf.Min(3, slots.Length); i++)
+            // Wire piece slots - find them by name for reliability
+            var slotsProperty = so.FindProperty("_pieceSlots");
+            slotsProperty.arraySize = 3;
+
+            for (int i = 0; i < 3; i++)
             {
-                so.FindProperty("_pieceSlots").GetArrayElementAtIndex(i).objectReferenceValue = slots[i];
+                string slotName = $"PieceSlot_{i}";
+                Transform slotTransform = pieceTray.transform.Find(slotName);
+                if (slotTransform != null)
+                {
+                    var slot = slotTransform.GetComponent<PieceTraySlot>();
+                    if (slot != null)
+                    {
+                        slotsProperty.GetArrayElementAtIndex(i).objectReferenceValue = slot;
+                        Debug.Log($"[BuildGameScene] Wired slot {i}: {slot.gameObject.name}");
+                    }
+                    else
+                    {
+                        Debug.LogError($"[BuildGameScene] PieceTraySlot component missing on {slotName}");
+                    }
+                }
+                else
+                {
+                    Debug.LogError($"[BuildGameScene] Could not find {slotName} under PieceTray");
+                }
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            Debug.Log("[BuildGameScene] Created GridView with cell prefab");
+            // Verify wiring
+            int wiredCount = 0;
+            for (int i = 0; i < 3; i++)
+            {
+                if (slotsProperty.GetArrayElementAtIndex(i).objectReferenceValue != null)
+                    wiredCount++;
+            }
+            Debug.Log($"[BuildGameScene] Created GridView - {wiredCount}/3 slots wired");
+
             return gridView;
         }
 
